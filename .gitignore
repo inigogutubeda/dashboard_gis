@@ -1,0 +1,10 @@
+# Ignora la carpeta del entorno virtual
+env/
+
+# Ignora archivos de caché de Python
+__pycache__/
+*.py[cod]
+
+# Archivos de logs o configuraciones locales
+*.log
+.env
