@@ -8,4 +8,4 @@ __pycache__/
 # Archivos de logs o configuraciones locales
 *.log
 .env
-#tes
+#test
