@@ -116,11 +116,14 @@ def main():
         data=gdf_merged,
         columns=["id_region", selected_year],
         key_on="feature.properties.id_region",
-        fill_color="OrRd",
+        fill_color="YlGnBu",
         fill_opacity=0.7,
         line_opacity=0.2,
-        legend_name=f"{csv_choice} - {selected_year}",
-        highlight=True
+        legend_name=(
+            f"{csv_choice} - {selected_year}"
+            "Haga zoom y clic en las comarcas para ver detalles."
+        ),
+        highlight=False
     ).add_to(m)
 
     # ========== 12. Añadir GeoJson con tooltip para mostrar datos ==========
@@ -148,7 +151,7 @@ def main():
 
     # ========== 13. Desplegar el mapa en Streamlit ==========
 
-    st_folium(m, width=700, height=500)
+    st_folium(m, width=900, height=650)
 
 
 if __name__ == "__main__":
