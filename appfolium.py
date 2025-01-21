@@ -135,7 +135,7 @@ def main():
     ).add_to(m)
 
     # 13. Mostrar mapa en Streamlit
-    st_folium(m, width=700, height=500)
+    st_folium(m, width=900, height=650)
 
 
 if __name__ == "__main__":
