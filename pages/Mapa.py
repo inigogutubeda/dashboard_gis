@@ -1,6 +1,6 @@
 import streamlit as st
-import folium
-from streamlit_folium import st_folium
+import plotly.express as px
+import json
 
 # Importamos nuestras utilidades
 from utils.data_loader import load_shapefile, load_csv
@@ -11,7 +11,7 @@ from utils.geoutils import (
 )
 
 def main():
-    st.title("Mapa Interactivo: Unir CSV con SHP y Pintar Datos")
+    st.title("Mapa Interactivo (Plotly): Unir CSV con SHP y Pintar Datos")
 
     # 1. Cargar shapefile
     try:
@@ -58,51 +58,41 @@ def main():
     # 6. Convertir la columna de año a numérica
     gdf_merged = convert_year_to_numeric(gdf_merged, selected_year)
 
-    # 7. Crear mapa Folium
+    # 7. Calcular centro del mapa a partir del bounding box (para zoom/mapa)
     bounds = gdf_merged.total_bounds  # [minx, miny, maxx, maxy]
     center_lat = (bounds[1] + bounds[3]) / 2
     center_lon = (bounds[0] + bounds[2]) / 2
 
-    m = folium.Map(location=[center_lat, center_lon], zoom_start=8, tiles="cartodbpositron")
+    # 8. Convertir GeoDataFrame a GeoJSON
+    #    (Plotly necesita un objeto GeoJSON; lo cargamos en un dict con `json.loads`)
+    geojson_data = json.loads(gdf_merged.to_json())
 
-    # 8. Choropleth
-    folium.Choropleth(
-        geo_data=gdf_merged.__geo_interface__,
-        data=gdf_merged,
-        columns=["id_region", selected_year],
-        key_on="feature.properties.id_region",
-        fill_color="YlGnBu",
-        fill_opacity=0.7,
-        line_opacity=0.2,
-        nan_fill_color="white",
-        nan_fill_opacity=0.4,
-        legend_name=(f"{csv_choice} - {selected_year} (Haga zoom y clic)"),
-        highlight=False
-    ).add_to(m)
+    # 9. Crear el Choropleth con Plotly
+    fig = px.choropleth_mapbox(
+        data_frame=gdf_merged,
+        geojson=geojson_data,
+        locations="id_region",             # Columna que vincula con la geometría
+        featureidkey="properties.id_region",  # Ruta en el GeoJSON donde está el ID
+        color=selected_year,
+        hover_name="COMARCA",              # Qué mostrar como título en hover
+        hover_data={selected_year: True},  # Podemos mostrar la columna de año en hover
+        color_continuous_scale="YlGnBu",
+        mapbox_style="carto-positron",
+        zoom=7.5,  # Nivel de zoom inicial
+        center={"lat": center_lat, "lon": center_lon},
+        opacity=0.7,
+    )
 
-    # 9. Capa adicional con tooltip
-    folium.GeoJson(
-        gdf_merged.__geo_interface__,
-        name="Comarcas",
-        tooltip=folium.GeoJsonTooltip(
-            fields=["COMARCA", selected_year],
-            aliases=["Comarca", f"{csv_choice} {selected_year}"],
-            localize=True
-        ),
-        style_function=lambda x: {
-            "fillColor": "gray",
-            "color": "black",
-            "weight": 0.5,
-            "fillOpacity": 0.1
-        },
-        highlight_function=lambda x: {
-            "weight": 2,
-            "color": "blue"
-        }
-    ).add_to(m)
+    # Opcional: Ajustar layout (márgenes y colorbar)
+    fig.update_layout(
+        margin={"r":0,"t":0,"l":0,"b":0},
+        coloraxis_colorbar=dict(
+            title=f"{csv_choice} - {selected_year}"
+        )
+    )
 
-    # 10. Mostrar mapa en Streamlit
-    st_folium(m, width=700, height=500)
+    # 10. Mostrar figura en Streamlit
+    st.plotly_chart(fig, use_container_width=True)
 
 if __name__ == "__main__":
     main()
