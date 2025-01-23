@@ -19,7 +19,13 @@ def main():
     # 2. Seleccionar CSV (en la barra lateral, igual que en el mapa)
     csv_files = {
         "Construcción": "data/construccion.csv",
-        "Contratos Indefinidos": "data/Contratos indefinidos registrados en el ano (% total contratos).csv"
+        "Contratos Indefinidos": "data/Contratos indefinidos registrados en el ano (% total contratos).csv",
+        "Contratos Anuales": "data/Contratos registrados en el ano ( habitantes).csv",
+        "Densidad comercial minorista": "data/Densidad comercial minorista ( habitantes).csv",
+        "Empleo generado microempresas": "data/Empleo generado por las microempresas (0-9 empleados) (%).csv",
+        "Indice rotación contractual": "data/Indice de rotacion contractual (contratos_personas).csv",
+        "Población contratada año": "data/Poblacion contratada en el ano ( habitantes).csv",
+        "Mayor 16 años. Sector servicios": "data/Poblacion de 16 y mas anos ocupada en el sector servicios (%).csv"
     }
     csv_choice = st.sidebar.selectbox(
         "Elige el conjunto de datos a visualizar:",
