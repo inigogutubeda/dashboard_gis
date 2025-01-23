@@ -11,7 +11,7 @@ from utils.geoutils import (
 )
 
 def main():
-    st.title("Mapa Interactivo (Plotly): Unir CSV con SHP y Pintar Datos")
+    st.title("Mapa Interactivo de Datos por Comarca")
 
     # 1. Cargar shapefile
     try:
