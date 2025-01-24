@@ -1,19 +1,17 @@
+# pages/03_pie_chart.py
+
 import streamlit as st
 import plotly.express as px
-import json
-
-# Importamos nuestras utilidades
+import pandas as pd
 from utils.data_loader import load_shapefile, load_csv
-from utils.geoutils import (
-    prepare_geodata,
-    detect_year_columns,
-    convert_year_to_numeric
-)
+from utils.geoutils import prepare_geodata, detect_year_columns, convert_year_to_numeric
+
+st.set_page_config(layout="wide")
 
 def main():
-    st.title("Mapa Interactivo de Datos por Comarca")
+    st.title("Diagrama de Queso: Distribución por Región")
 
-    # 1. Cargar shapefile
+    # 1. Cargar Shapefile
     try:
         gdf = load_shapefile("data/COMARCAS_5000_ETRS89.shp")
     except Exception as e:
@@ -39,14 +37,14 @@ def main():
 
     chosen_csv = csv_files[csv_choice]
 
-    # 3. Leer el CSV
+    # 3. Cargar CSV
     try:
         df = load_csv(chosen_csv)
     except Exception as e:
         st.error(f"Error al leer {chosen_csv}: {e}")
         st.stop()
 
-    # 4. Preparar los datos (merge, re-proyección, etc.)
+    # 4. Merge y reproyección
     gdf_merged = prepare_geodata(gdf, df)
 
     # 5. Detectar columnas de tipo año
@@ -55,50 +53,50 @@ def main():
         st.warning("No se han detectado columnas de años en el CSV.")
         st.stop()
 
+    # 6. Seleccionar año
     selected_year = st.sidebar.selectbox(
         "Selecciona el año a visualizar:",
         options=year_columns
     )
-    st.write(f"Año seleccionado: **{selected_year}**")
 
-    # 6. Convertir la columna de año a numérica
+    # 7. Convertir la columna de año a numérico
     gdf_merged = convert_year_to_numeric(gdf_merged, selected_year)
 
-    # 7. Calcular centro del mapa a partir del bounding box (para zoom/mapa)
-    bounds = gdf_merged.total_bounds  # [minx, miny, maxx, maxy]
-    center_lat = (bounds[1] + bounds[3]) / 2
-    center_lon = (bounds[0] + bounds[2]) / 2
+    st.write(f"Año seleccionado: **{selected_year}**")
 
-    # 8. Convertir GeoDataFrame a GeoJSON
-    #    (Plotly necesita un objeto GeoJSON; lo cargamos en un dict con `json.loads`)
-    geojson_data = json.loads(gdf_merged.to_json())
+    # 8. Crear un DataFrame auxiliar: [COMARCA, Valor]
+    df_pie = gdf_merged[["COMARCA", selected_year]].copy()
+    df_pie.columns = ["COMARCA", "Valor"]  # Renombramos para claridad
 
-    # 9. Crear el Choropleth con Plotly
-    fig = px.choropleth_mapbox(
-        data_frame=gdf_merged,
-        geojson=geojson_data,
-        locations="id_region",             # Columna que vincula con la geometría
-        featureidkey="properties.id_region",  # Ruta en el GeoJSON donde está el ID
-        color=selected_year,
-        hover_name="COMARCA",              # Qué mostrar como título en hover
-        hover_data={selected_year: True},  # Podemos mostrar la columna de año en hover
-        color_continuous_scale="YlGnBu",
-        mapbox_style="carto-positron",
-        zoom=7.5,  # Nivel de zoom inicial
-        center={"lat": center_lat, "lon": center_lon},
-        opacity=0.7,
+    # Opcional: eliminar filas con NaN
+    df_pie.dropna(subset=["Valor"], inplace=True)
+
+    # 9. Construir el pie chart con Plotly
+    fig = px.pie(
+        df_pie,
+        names="COMARCA",
+        values="Valor",
+        title=f"Distribución de {csv_choice} en {selected_year}",
+        hole=0.0  # 0 para un pie clásico; >0 para un donut
     )
-
-    # Opcional: Ajustar layout (márgenes y colorbar)
-    fig.update_layout(
-        margin={"r":0,"t":0,"l":0,"b":0},
-        coloraxis_colorbar=dict(
-            title=f"{csv_choice} - {selected_year}"
-        )
-    )
-
-    # 10. Mostrar figura en Streamlit
     st.plotly_chart(fig, use_container_width=True)
+
+    # 10. Expositor de datos: región con máximo, mínimo y media global
+    if not df_pie.empty:
+        max_val = df_pie["Valor"].max()
+        min_val = df_pie["Valor"].min()
+        avg_val = df_pie["Valor"].mean()
+
+        # Encontrar nombre de región con el máximo y el mínimo
+        max_region = df_pie.loc[df_pie["Valor"].idxmax(), "COMARCA"]
+        min_region = df_pie.loc[df_pie["Valor"].idxmin(), "COMARCA"]
+
+        st.subheader("Estadísticas del Año Seleccionado")
+        st.write(f"- **Región con Valor Máximo**: {max_region} ({max_val:.2f})")
+        st.write(f"- **Región con Valor Mínimo**: {min_region} ({min_val:.2f})")
+        st.write(f"- **Media de Todas las Regiones**: {avg_val:.2f}")
+    else:
+        st.warning("No hay datos disponibles para el año seleccionado.")
 
 if __name__ == "__main__":
     main()

@@ -15,6 +15,8 @@ def validate_email(email: str) -> bool:
     pattern = r"^[\w\.-]+@[\w\.-]+\.\w+$"
     return bool(re.match(pattern, email))
 
+st.set_page_config(layout="wide")
+
 def main():
     st.title("Formulario de Recogida de Datos")
 
