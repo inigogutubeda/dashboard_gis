@@ -2,6 +2,7 @@ import streamlit as st
 import plotly.express as px
 import json
 from streamlit_plotly_events import plotly_events
+from utils.metadata import load_datasets_metadata
 
 # Importamos nuestras utilidades
 from utils.data_loader import load_shapefile, load_csv
@@ -25,7 +26,7 @@ def main():
 
     # 2. Seleccionar CSV
     csv_files = {
-        "Construcción": "data/construccion.csv",
+        "Porcentaje establecimeintos sector cosntruccion (% sobre total)": "data/Porcentaje establecimientos sector construccion sobre el total.csv",
         "Contratos Indefinidos": "data/Contratos indefinidos registrados en el ano (% total contratos).csv",
         "Contratos Anuales": "data/Contratos registrados en el ano ( habitantes).csv",
         "Densidad comercial minorista": "data/Densidad comercial minorista ( habitantes).csv",

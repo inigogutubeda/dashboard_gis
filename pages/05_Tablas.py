@@ -11,8 +11,7 @@ def main():
 
     # Diccionario de CSV disponibles
     csv_files = {
-        "Construcción": "data/construccion.csv",
-        "Contratos Indefinidos": "data/Contratos indefinidos registrados en el ano (% total contratos).csv",
+        "Porcentaje establecimeintos sector construccion (% sobre total)": "data/Porcentaje establecimientos sector construccion sobre el total.csv",        "Contratos Indefinidos": "data/Contratos indefinidos registrados en el ano (% total contratos).csv",
         "Contratos Anuales": "data/Contratos registrados en el ano ( habitantes).csv",
         "Densidad comercial minorista": "data/Densidad comercial minorista ( habitantes).csv",
         "Empleo generado microempresas": "data/Empleo generado por las microempresas (0-9 empleados) (%).csv",

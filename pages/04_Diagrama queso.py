@@ -20,7 +20,7 @@ def main():
 
     # 2. Seleccionar CSV
     csv_files = {
-        "Construcción": "data/construccion.csv",
+        "Porcentaje establecimeintos sector construccion (% sobre total)": "data/Porcentaje establecimientos sector construccion sobre el total.csv",
         "Contratos Indefinidos": "data/Contratos indefinidos registrados en el ano (% total contratos).csv",
         "Contratos Anuales": "data/Contratos registrados en el ano ( habitantes).csv",
         "Densidad comercial minorista": "data/Densidad comercial minorista ( habitantes).csv",

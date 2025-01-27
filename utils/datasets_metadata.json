@@ -1,0 +1,35 @@
+{
+    "Construcción": {
+      "units": "Edificaciones / 1000 hab",
+      "description": "Indica el número de construcciones realizadas por cada 1000 habitantes en la región."
+    },
+    "Contratos Indefinidos": {
+      "units": "% del total de contratos",
+      "description": "Porcentaje de contratos indefinidos registrados en el año con respecto al total de contratos."
+    },
+    "Contratos Anuales": {
+      "units": "Contratos por cada 1000 habitantes",
+      "description": "Muestra la cantidad de contratos que se registran en el año, normalizados por cada 1000 habitantes."
+    },
+    "Densidad comercial minorista": {
+      "units": "Establecimientos / 1000 hab",
+      "description": "Representa la concentración de establecimientos comerciales minoristas por cada 1000 habitantes."
+    },
+    "Empleo generado microempresas": {
+      "units": "% del empleo total",
+      "description": "Porcentaje del empleo total que generan las microempresas (0-9 empleados) en la región."
+    },
+    "Indice rotación contractual": {
+      "units": "Índice (contratos/personas)",
+      "description": "Refleja la rotación contractual: número de contratos por persona en un periodo determinado."
+    },
+    "Población contratada año": {
+      "units": "Personas contratadas por cada 1000 hab",
+      "description": "Número de personas contratadas en el año, normalizado por cada 1000 habitantes."
+    },
+    "Mayor 16 años. Sector servicios": {
+      "units": "% de la población ocupada mayor de 16 años",
+      "description": "Porcentaje de la población mayor de 16 años que trabaja en el sector servicios."
+    }
+  }
+  
