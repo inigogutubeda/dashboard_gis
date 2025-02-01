@@ -1,98 +1,125 @@
-# pages/03_recogida_datos.py
-
 import streamlit as st
-import os
 import json
-import re
 from datetime import datetime
+from pathlib import Path
+from openai import OpenAI
 
-def validate_phone(phone: str) -> bool:
-    """Devuelve True si 'phone' contiene solo dígitos."""
-    return phone.isdigit()
+class TerritorialDataCollector:
+    def __init__(self):
+        # Initialize OpenAI client with secret
+        self.client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+        
+        if "territorial_chat_history" not in st.session_state:
+            st.session_state.territorial_chat_history = []
+        if "mandatory_index" not in st.session_state:
+            st.session_state.mandatory_index = 0
+        if "collected_data" not in st.session_state:
+            st.session_state.collected_data = {}
 
-def validate_email(email: str) -> bool:
-    """Validación sencilla de formato de email usando regex."""
-    pattern = r"^[\w\.-]+@[\w\.-]+\.\w+$"
-    return bool(re.match(pattern, email))
+        # Updated questions for territorial development
+        self.mandatory_questions = [
+            "¿Qué región o territorio está analizando?",
+            "¿Cuál es el principal sector económico de la región?",
+            "¿Cuál es la tasa de desempleo actual en la región?",
+            "¿Qué infraestructuras críticas necesitan mejora?",
+            "¿Cuál es el nivel medio de renta per cápita?",
+            "¿Qué porcentaje de empresas son PYMES?",
+            "¿Cuáles son los principales proyectos de desarrollo actuales?",
+            "¿Qué indicadores de innovación destacan?",
+            "¿Cuál es el nivel de digitalización empresarial?",
+            "¿Qué fondos europeos/públicos se están utilizando?"
+        ]
 
-st.set_page_config(layout="wide")
+        # Setup data storage
+        data_path = Path("data/territorial_data")
+        data_path.mkdir(parents=True, exist_ok=True)
+        self.json_file_path = data_path / "territorial_indicators.json"
+
+    def get_assistant_response(self, messages):
+        try:
+            response = self.client.chat.completions.create(
+                model="gpt-4",
+                messages=messages,
+                temperature=0.5
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            st.error(f"Error en la comunicación con OpenAI: {e}")
+            return None
+
+    def save_data_to_json(self):
+        new_session = {
+            "timestamp": datetime.now().isoformat(),
+            "territory": st.session_state.collected_data.get("¿Qué región o territorio está analizando?", [""])[0],
+            "indicators": st.session_state.collected_data,
+            "metadata": {
+                "data_source": "user_input",
+                "collection_method": "interactive_survey",
+                "version": "1.0"
+            }
+        }
+
+        try:
+            existing_data = []
+            if self.json_file_path.exists():
+                with open(self.json_file_path, "r", encoding="utf-8") as f:
+                    existing_data = json.load(f)
+            
+            existing_data.append(new_session)
+            with open(self.json_file_path, "w", encoding="utf-8") as f:
+                json.dump(existing_data, f, indent=4, ensure_ascii=False)
+            
+            st.success("Datos territoriales guardados correctamente")
+        except Exception as e:
+            st.error(f"Error al guardar datos: {e}")
 
 def main():
-    st.title("Formulario de Recogida de Datos")
+    st.title("📊 Análisis de Desarrollo Territorial")
+    st.markdown("""
+    Este módulo recopila información sobre indicadores territoriales para análisis 
+    de desarrollo económico y social. Los datos serán utilizados para generar 
+    insights sobre el desarrollo regional.
+    """)
 
-    st.write("Completa los campos y pulsa **Enviar** para guardar tu información.")
-    
-    # Puedes personalizar las industrias que quieras en la lista:
-    INDUSTRIAS = ["Finanzas", "Tecnología", "Educación", "Salud", "Retail", "Otro"]
+    collector = TerritorialDataCollector()
 
-    # Formulario
-    with st.form("form_datos"):
-        nombre_completo = st.text_input("Nombre completo")
-        telefono = st.text_input("Número de teléfono")
-        email = st.text_input("Email")
-        url_info = st.text_input("URL donde está localizada la información")
-        industria = st.selectbox("Industria", options=INDUSTRIAS)
-        texto_plano = st.text_area("Texto plano (describe lo que quieras)")
+    # Display chat interface
+    for message in st.session_state.territorial_chat_history:
+        with st.chat_message(message["role"]):
+            st.write(message["content"])
 
-        # Botón de envío
-        enviado = st.form_submit_button("Enviar")
+    if st.session_state.mandatory_index < len(collector.mandatory_questions):
+        current_question = collector.mandatory_questions[st.session_state.mandatory_index]
+        
+        user_input = st.chat_input(f"Responde a: {current_question}")
+        
+        if user_input:
+            with st.chat_message("user"):
+                st.write(user_input)
 
-        if enviado:
-            # 1. Validaciones mínimas
-            valid = True
+            collector.store_user_answer(user_input)
+            
+            analysis_prompt = f"Analiza esta respuesta sobre '{current_question}' desde una perspectiva de desarrollo territorial y sugiere áreas de mejora si es relevante."
+            
+            messages = [
+                {"role": "system", "content": "Eres un experto en desarrollo territorial y análisis económico regional."},
+                {"role": "user", "content": f"{analysis_prompt}\nRespuesta: {user_input}"}
+            ]
+            
+            ai_response = collector.get_assistant_response(messages)
+            if ai_response:
+                with st.chat_message("assistant"):
+                    st.write(ai_response)
+                st.session_state.territorial_chat_history.append({
+                    "role": "assistant",
+                    "content": ai_response
+                })
 
-            if not telefono.strip():
-                st.error("El número de teléfono es obligatorio.")
-                valid = False
-            elif not validate_phone(telefono):
-                st.error("El teléfono debe contener solo dígitos.")
-                valid = False
-
-            if not email.strip():
-                st.error("El email es obligatorio.")
-                valid = False
-            elif not validate_email(email):
-                st.error("El email no parece tener un formato válido.")
-                valid = False
-
-            # Puedes agregar más validaciones (nombre_completo no vacío, etc.)
-            if not nombre_completo.strip():
-                st.error("El nombre completo es obligatorio.")
-                valid = False
-
-            # 2. Si pasa todas las validaciones, guardamos en un JSON nuevo
-            if valid:
-                data_entry = {
-                    "nombre_completo": nombre_completo,
-                    "telefono": telefono,
-                    "email": email,
-                    "url_info": url_info,
-                    "industria": industria,
-                    "texto_plano": texto_plano,
-                    "timestamp": str(datetime.now())
-                }
-
-                # Montamos un nombre único de archivo, por ej: usuarios_20250122_153045.json
-                filename = f"usuarios_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-                json_path = os.path.join("bucket", filename)
-
-                # Aseguramos que la carpeta bucket/ exista
-                os.makedirs(os.path.dirname(json_path), exist_ok=True)
-
-                # Guardamos el diccionario en un JSON "nuevo"
-                with open(json_path, "w", encoding="utf-8") as f:
-                    json.dump(data_entry, f, ensure_ascii=False, indent=4)
-
-                # Confirmación
-                st.success(f"¡Datos guardados!")
-
-                # Forzamos un reinicio de la app para limpiar el formulario
-                st.session_state["nombre_completo"] = ""
-                st.session_state["telefono"] = ""
-                st.session_state["email"] = ""
-                st.session_state["url_info"] = ""
-                st.session_state["industria"] = "Finanzas"  # valor por defecto
-                st.session_state["texto_plano"] = ""
+            st.session_state.mandatory_index += 1
+            st.rerun()
+    else:
+        st.success("¡Análisis territorial completado! Los datos han sido registrados.")
+        collector.save_data_to_json()
 
 if __name__ == "__main__":
     main()
