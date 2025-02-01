@@ -6,41 +6,45 @@ from openai import OpenAI
 
 class UserDataCollector:
     def __init__(self):
-        self.client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-        self.init_session_state()
+        # Define questions first
         self.questions = {
-            "personal": [
+            "identification": [
                 "¿Cuál es tu nombre completo?",
-                "¿Cuál es tu rol en la organización?",
-                "¿En qué departamento trabajas?"
+                "¿En qué organización trabajas?",
+                "¿Cuál es tu rol?"
             ],
             "data_sources": [
-                "¿Qué plataformas utilizas para recopilar datos?",
-                "¿Con qué frecuencia actualizas tus datos?",
-                "¿Cuáles son tus principales fuentes de información?"
+                "¿Qué plataformas utilizas para datos?",
+                "¿Con qué frecuencia actualizas datos?",
+                "¿Cuáles son tus fuentes principales?"
             ],
             "methodology": [
-                "¿Qué herramientas de análisis utilizas?",
-                "¿Cómo procesas los datos territoriales?",
-                "¿Qué indicadores son más relevantes para tu trabajo?"
+                "¿Qué herramientas de análisis usas?",
+                "¿Cómo procesas la información?",
+                "¿Qué indicadores son importantes?"
             ]
         }
-        self.setup_storage()
+
+        # Initialize OpenAI client
+        self.client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+        
+        # Setup storage
+        self.data_path = Path("data/user_data")
+        self.data_path.mkdir(parents=True, exist_ok=True)
+        self.json_file_path = self.data_path / "user_responses.json"
+        
+        # Initialize session state last
+        self.init_session_state()
 
     def init_session_state(self):
         if "chat_history" not in st.session_state:
             st.session_state.chat_history = []
         if "current_category" not in st.session_state:
-            st.session_state.current_category = list(self.questions.keys())[0]
+            st.session_state.current_category = "identification"
         if "question_index" not in st.session_state:
             st.session_state.question_index = 0
         if "responses" not in st.session_state:
             st.session_state.responses = {}
-
-    def setup_storage(self):
-        self.data_path = Path("data/user_data")
-        self.data_path.mkdir(parents=True, exist_ok=True)
-        self.json_file_path = self.data_path / "user_responses.json"
 
     def get_ai_analysis(self, user_input, question):
         try:
@@ -61,11 +65,9 @@ class UserDataCollector:
         current_cat = st.session_state.current_category
         current_q = self.questions[current_cat][st.session_state.question_index]
         
-        # Store response
         if current_cat not in st.session_state.responses:
             st.session_state.responses[current_cat] = {}
         
-        # Get AI analysis
         ai_analysis = self.get_ai_analysis(user_input, current_q)
         
         st.session_state.responses[current_cat][current_q] = {
@@ -73,13 +75,11 @@ class UserDataCollector:
             "análisis": ai_analysis
         }
 
-        # Update chat history
         st.session_state.chat_history.extend([
             {"role": "user", "content": user_input},
             {"role": "assistant", "content": ai_analysis}
         ])
 
-        # Advance to next question
         self.advance_question()
 
     def advance_question(self):
@@ -104,7 +104,6 @@ def main():
         current_cat = st.session_state.current_category
         current_q = collector.questions[current_cat][st.session_state.question_index]
         
-        # Display chat history
         for message in st.session_state.chat_history:
             with st.chat_message(message["role"]):
                 st.write(message["content"])
