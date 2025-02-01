@@ -1,14 +1,22 @@
 import streamlit as st
 import json
+import os
 from datetime import datetime
 from pathlib import Path
 from openai import OpenAI
 
+st.set_page_config(
+    page_title="Análisis Territorial",
+    page_icon="🗺️",
+    layout="wide"
+)
+
 class TerritorialDataCollector:
     def __init__(self):
-        # Initialize OpenAI client with secret
+        # Initialize OpenAI client
         self.client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
         
+        # Initialize session state
         if "territorial_chat_history" not in st.session_state:
             st.session_state.territorial_chat_history = []
         if "mandatory_index" not in st.session_state:
@@ -16,7 +24,7 @@ class TerritorialDataCollector:
         if "collected_data" not in st.session_state:
             st.session_state.collected_data = {}
 
-        # Updated questions for territorial development
+        # Questions for territorial development
         self.mandatory_questions = [
             "¿Qué región o territorio está analizando?",
             "¿Cuál es el principal sector económico de la región?",
@@ -31,9 +39,9 @@ class TerritorialDataCollector:
         ]
 
         # Setup data storage
-        data_path = Path("data/territorial_data")
-        data_path.mkdir(parents=True, exist_ok=True)
-        self.json_file_path = data_path / "territorial_indicators.json"
+        self.data_path = Path("data/territorial_data")
+        self.data_path.mkdir(parents=True, exist_ok=True)
+        self.json_file_path = self.data_path / "territorial_indicators.json"
 
     def get_assistant_response(self, messages):
         try:
@@ -47,34 +55,52 @@ class TerritorialDataCollector:
             st.error(f"Error en la comunicación con OpenAI: {e}")
             return None
 
-    def save_data_to_json(self):
-        new_session = {
-            "timestamp": datetime.now().isoformat(),
-            "territory": st.session_state.collected_data.get("¿Qué región o territorio está analizando?", [""])[0],
-            "indicators": st.session_state.collected_data,
-            "metadata": {
-                "data_source": "user_input",
-                "collection_method": "interactive_survey",
-                "version": "1.0"
-            }
-        }
-
+    def store_user_answer(self, user_input):
         try:
+            current_question = self.mandatory_questions[st.session_state.mandatory_index]
+            
+            if current_question not in st.session_state.collected_data:
+                st.session_state.collected_data[current_question] = []
+            st.session_state.collected_data[current_question].append(user_input)
+            
+            st.session_state.territorial_chat_history.append({
+                "role": "user",
+                "content": user_input
+            })
+            return True
+        except Exception as e:
+            st.error(f"Error almacenando respuesta: {e}")
+            return False
+
+    def save_data_to_json(self):
+        try:
+            new_session = {
+                "timestamp": datetime.now().isoformat(),
+                "territory": st.session_state.collected_data.get(
+                    "¿Qué región o territorio está analizando?", [""])[0],
+                "indicators": st.session_state.collected_data
+            }
+
             existing_data = []
             if self.json_file_path.exists():
                 with open(self.json_file_path, "r", encoding="utf-8") as f:
                     existing_data = json.load(f)
-            
+                if not isinstance(existing_data, list):
+                    existing_data = [existing_data]
+
             existing_data.append(new_session)
             with open(self.json_file_path, "w", encoding="utf-8") as f:
                 json.dump(existing_data, f, indent=4, ensure_ascii=False)
             
             st.success("Datos territoriales guardados correctamente")
+            return True
         except Exception as e:
-            st.error(f"Error al guardar datos: {e}")
+            st.error(f"Error guardando datos: {e}")
+            return False
 
 def main():
-    st.title("📊 Análisis de Desarrollo Territorial")
+    st.title("🗺️ Análisis de Desarrollo Territorial")
+    
     st.markdown("""
     Este módulo recopila información sobre indicadores territoriales para análisis 
     de desarrollo económico y social. Los datos serán utilizados para generar 
@@ -83,27 +109,36 @@ def main():
 
     collector = TerritorialDataCollector()
 
-    # Display chat interface
+    # Chat interface
+    st.subheader("💬 Cuestionario Territorial")
+
+    # Display chat history
     for message in st.session_state.territorial_chat_history:
         with st.chat_message(message["role"]):
             st.write(message["content"])
 
+    # Check if there are more questions
     if st.session_state.mandatory_index < len(collector.mandatory_questions):
         current_question = collector.mandatory_questions[st.session_state.mandatory_index]
         
+        # Display input box
         user_input = st.chat_input(f"Responde a: {current_question}")
         
         if user_input:
+            # Show user input
             with st.chat_message("user"):
                 st.write(user_input)
 
+            # Store answer
             collector.store_user_answer(user_input)
-            
-            analysis_prompt = f"Analiza esta respuesta sobre '{current_question}' desde una perspectiva de desarrollo territorial y sugiere áreas de mejora si es relevante."
+
+            # Get AI response
+            system_prompt = """Eres un experto en desarrollo territorial y análisis económico regional.
+            Analiza la respuesta del usuario y proporciona insights relevantes."""
             
             messages = [
-                {"role": "system", "content": "Eres un experto en desarrollo territorial y análisis económico regional."},
-                {"role": "user", "content": f"{analysis_prompt}\nRespuesta: {user_input}"}
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": f"Analiza esta respuesta a '{current_question}': {user_input}"}
             ]
             
             ai_response = collector.get_assistant_response(messages)
@@ -115,11 +150,23 @@ def main():
                     "content": ai_response
                 })
 
+            # Move to next question
             st.session_state.mandatory_index += 1
             st.rerun()
     else:
-        st.success("¡Análisis territorial completado! Los datos han sido registrados.")
+        st.success("¡Has completado todas las preguntas! Gracias por tu participación.")
         collector.save_data_to_json()
+        
+        # Add download button for JSON data
+        if collector.json_file_path.exists():
+            with open(collector.json_file_path, "r", encoding="utf-8") as f:
+                data = f.read()
+            st.download_button(
+                label="Descargar datos en formato JSON",
+                data=data,
+                file_name="territorial_indicators.json",
+                mime="application/json"
+            )
 
 if __name__ == "__main__":
     main()
