@@ -1,12 +1,28 @@
-import streamlit as st
+import os
 import json
 from datetime import datetime
-from pathlib import Path
+from dotenv import load_dotenv
 from openai import OpenAI
+import streamlit as st
 
-class TerritorialDataCollector:
+load_dotenv()
+
+class TerritorialChat:
     def __init__(self):
-        # Define preguntas obligatorias
+        self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+        # Prompt inicial de sistema
+        self.system_prompt = (
+            "Eres un experto en desarrollo territorial y análisis de datos. "
+            "Debes hacer preguntas clave sobre la metodología de análisis, plataformas utilizadas y "
+            "fuentes de información. Puedes hacer hasta 2 preguntas libres de seguimiento en cada una."
+        )
+
+        self.conversation_history = [
+            {"role": "system", "content": self.system_prompt},
+            {"role": "user", "content": "Hola, inicia la conversación sobre análisis territorial."},
+        ]
+
         self.mandatory_questions = [
             "¿Cuál es tu nombre completo?",
             "¿En qué organización trabajas?",
@@ -19,77 +35,90 @@ class TerritorialDataCollector:
             "¿Qué indicadores son importantes?"
         ]
         self.mandatory_index = 0
-        self.MAX_FOLLOW_UP = 1  # Límite de preguntas de seguimiento
-        
-        # Inicializa cliente OpenAI
-        self.client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-        
-        # Configuración de almacenamiento
-        self.data_path = Path("data/user_data")
-        self.data_path.mkdir(parents=True, exist_ok=True)
-        self.json_file_path = self.data_path / "development_data.json"
-        
-        # Inicialización del estado de sesión
-        self.init_session_state()
+        self.follow_up_count = 0
+        self.MAX_FOLLOW_UP = 1
+        self.collected_data = {}
+        self.json_file_path = os.path.join("data", "user_data", "development_data.json")
 
-    def init_session_state(self):
+    def run_chat(self):
+        st.title("📊 Chat sobre Desarrollo Territorial")
+
         if "chat_history" not in st.session_state:
             st.session_state.chat_history = []
+
         if "mandatory_index" not in st.session_state:
             st.session_state.mandatory_index = 0
+
         if "follow_up_count" not in st.session_state:
             st.session_state.follow_up_count = 0
+
         if "responses" not in st.session_state:
             st.session_state.responses = {}
 
-    def get_ai_analysis(self, user_input, question):
-        try:
-            response = self.client.chat.completions.create(
-                model="gpt-4",
-                messages=[
-                    {"role": "system", "content": "Eres un experto en desarrollo territorial y análisis de datos."},
-                    {"role": "user", "content": f"Analiza esta respuesta a '{question}': {user_input}"}
-                ],
-                temperature=0.7
-            )
-            return response.choices[0].message.content
-        except Exception as e:
-            st.error(f"Error en análisis AI: {e}")
-            return None
+        self._display_chat()
 
-    def process_response(self, user_input):
+    def _display_chat(self):
+        index = st.session_state.mandatory_index
+        if index < len(self.mandatory_questions):
+            question = self.mandatory_questions[index]
+            for message in st.session_state.chat_history:
+                with st.chat_message(message["role"]):
+                    st.write(message["content"])
+            
+            user_input = st.chat_input(f"📝 {question}")
+            if user_input:
+                self._store_user_answer(user_input)
+                self._stream_model_response()
+                st.rerun()
+        else:
+            st.success("¡Gracias por completar el cuestionario!")
+            if st.button("Descargar Respuestas"):
+                self._save_data_to_json()
+
+    def _store_user_answer(self, user_input):
         index = st.session_state.mandatory_index
         question = self.mandatory_questions[index]
-
-        if index not in st.session_state.responses:
-            st.session_state.responses[question] = []
-
-        ai_analysis = self.get_ai_analysis(user_input, question)
         
-        st.session_state.responses[question].append({
-            "respuesta": user_input,
-            "análisis": ai_analysis
-        })
+        if question not in st.session_state.responses:
+            st.session_state.responses[question] = []
+        
+        st.session_state.responses[question].append(user_input)
+        st.session_state.chat_history.append({"role": "user", "content": user_input})
 
-        st.session_state.chat_history.extend([
-            {"role": "user", "content": user_input},
-            {"role": "assistant", "content": ai_analysis}
-        ])
-
-        # Control de preguntas de seguimiento
         if st.session_state.follow_up_count >= self.MAX_FOLLOW_UP:
-            self.advance_question()
+            self._go_to_next_question()
         else:
             st.session_state.follow_up_count += 1
 
-    def advance_question(self):
+    def _go_to_next_question(self):
         st.session_state.mandatory_index += 1
         st.session_state.follow_up_count = 0
-        
         if st.session_state.mandatory_index >= len(self.mandatory_questions):
             st.session_state.mandatory_index = "completed"
 
-    def save_data(self):
+    def _stream_model_response(self):
+        try:
+            messages = [
+                {"role": "system", "content": self.system_prompt}
+            ] + st.session_state.chat_history
+            
+            response = self.client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=messages,
+                stream=True
+            )
+            full_response = ""
+            with st.chat_message("assistant"):
+                for chunk in response:
+                    if chunk.choices[0].delta.content is not None:
+                        full_response += chunk.choices[0].delta.content
+                        st.write(chunk.choices[0].delta.content)
+            
+            st.session_state.chat_history.append({"role": "assistant", "content": full_response})
+        except Exception as e:
+            st.error(f"Error en el streaming de la respuesta: {e}")
+
+    def _save_data_to_json(self):
         session_data = {
             "timestamp": datetime.now().isoformat(),
             "responses": st.session_state.responses
@@ -101,29 +130,6 @@ class TerritorialDataCollector:
         except Exception as e:
             st.error(f"Error al guardar datos: {e}")
 
-# ----------------------------------------------------------------------------
-# INTERFAZ STREAMLIT
-# ----------------------------------------------------------------------------
-def main():
-    st.title("📊 Chat sobre Desarrollo Territorial")
-    collector = TerritorialDataCollector()
-
-    if st.session_state.mandatory_index != "completed":
-        index = st.session_state.mandatory_index
-        question = collector.mandatory_questions[index]
-        
-        for message in st.session_state.chat_history:
-            with st.chat_message(message["role"]):
-                st.write(message["content"])
-        
-        user_input = st.chat_input(f"📝 {question}")
-        if user_input:
-            collector.process_response(user_input)
-            st.rerun()
-    else:
-        st.success("¡Gracias por completar el cuestionario!")
-        if st.button("Descargar Respuestas"):
-            collector.save_data()
-
 if __name__ == "__main__":
-    main()
+    chat = TerritorialChat()
+    chat.run_chat()
