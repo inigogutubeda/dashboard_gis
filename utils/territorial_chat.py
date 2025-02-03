@@ -20,14 +20,14 @@ class TerritorialChat:
             "que hay información interesante adicional. Mantén la conversación centrada en temas de desarrollo territorial."
         )
         
-        # Se inicia el historial con el prompt del sistema y la pregunta para obtener el nombre.
+        # Se inicia el historial con el prompt del sistema y la primera pregunta para obtener el nombre.
         self.conversation_history = [
             {"role": "system", "content": self.system_prompt},
             {"role": "user", "content": "Hola, ¿cuál es tu nombre?"}
         ]
         
         # ----- PREGUNTAS OBLIGATORIAS (DESARROLLO TERRITORIAL) -----
-        # Nota: La primera pregunta ya no es sobre el nombre.
+        # La primera pregunta obligatoria (ya que el nombre se recoge aparte)
         self.mandatory_questions = [
             "¿Cuáles consideras que son los principales desafíos que enfrenta tu región en términos de desarrollo territorial?",
             "¿En qué empresas has trabajado?",
@@ -43,7 +43,7 @@ class TerritorialChat:
         self.MAX_FOLLOW_UP = 1
         
         # Donde se guardarán las respuestas del usuario, asociadas a cada pregunta obligatoria
-        # Se agregará también el nombre bajo la clave "Nombre"
+        # Se agrega también el nombre bajo la clave "Nombre"
         self.collected_data = {}
         
         # Ruta del archivo JSON para guardar la sesión
@@ -52,21 +52,20 @@ class TerritorialChat:
     def add_user_answer(self, user_input: str):
         """
         Procesa la respuesta del usuario. Si aún no se ha registrado el nombre, se asume que el
-        primer mensaje es su nombre y se genera una respuesta automática de saludo. En otros casos,
-        se almacena la respuesta asociada a la pregunta obligatoria actual.
+        primer mensaje es su nombre y se genera una respuesta automática de saludo y la primera pregunta.
+        En otros casos, se almacena la respuesta asociada a la pregunta obligatoria actual.
         """
         # Si aún no se ha guardado el nombre, procesarlo
         if self.user_name is None:
             self.user_name = user_input.strip()
             self.collected_data["Nombre"] = [self.user_name]
             self.conversation_history.append({"role": "user", "content": user_input})
-            # Respuesta automática del asistente
             saludo = (f"Encantado de conocerte, {self.user_name}. Vamos a empezar con la primera pregunta obligatoria sobre desarrollo territorial: "
                       f"{self.mandatory_questions[0]}")
             self.conversation_history.append({"role": "assistant", "content": saludo})
-            return saludo  # Se devuelve la respuesta para fines de visualización si se requiere
+            return saludo
         else:
-            # Procesamiento normal: almacenar respuesta en la pregunta obligatoria actual
+            # Procesamiento normal: almacenar la respuesta en la pregunta obligatoria actual.
             if self.mandatory_index < len(self.mandatory_questions):
                 current_question = self.mandatory_questions[self.mandatory_index]
             else:
@@ -82,7 +81,6 @@ class TerritorialChat:
         """
         self.mandatory_index += 1
         self.follow_up_count = 0  # Resetea el contador
-        
         if self.mandatory_index < len(self.mandatory_questions):
             next_question = self.mandatory_questions[self.mandatory_index]
             forced_prompt = (
@@ -103,11 +101,10 @@ class TerritorialChat:
         """
         try:
             completion = self.client.chat.completions.create(
-                model="gpt-4o",  # Ajusta el modelo según tus necesidades.
+                model="gpt-4o",
                 messages=self.conversation_history
             )
             response_message = completion.choices[0].message.content
-            # Añadimos la respuesta del asistente al historial para mantener el contexto
             self.conversation_history.append({"role": "assistant", "content": response_message})
             return response_message
         except Exception as e:
@@ -136,3 +133,4 @@ class TerritorialChat:
             st.success(f"Datos de la conversación guardados en {self.json_file_path}")
         except Exception as e:
             st.error(f"Error al guardar datos en JSON: {e}")
+            
