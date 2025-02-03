@@ -6,8 +6,10 @@ import streamlit as st
 
 class TerritorialChat:
     def __init__(self):
-        # Se obtiene la API key desde los secrets de Streamlit Cloud.
+        # Se obtiene la API key desde los secretos de Streamlit Cloud.
         self.client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+        
+        self.user_name = None  # Se guardará el nombre del usuario
 
         # ----- PROMPTS Y CONTEXTO -----
         self.system_prompt = (
@@ -18,58 +20,69 @@ class TerritorialChat:
             "que hay información interesante adicional. Mantén la conversación centrada en temas de desarrollo territorial."
         )
         
-        # Historial de la conversación para mantener el contexto
+        # Se inicia el historial con el prompt del sistema y la pregunta para obtener el nombre.
         self.conversation_history = [
             {"role": "system", "content": self.system_prompt},
-            {"role": "user", "content": (
-                "Hola. Eres un entrevistador en desarrollo territorial. "
-                "Empieza haciendo la primera pregunta obligatoria sobre el tema."
-            )}
+            {"role": "user", "content": "Hola, ¿cuál es tu nombre?"}
         ]
-
+        
         # ----- PREGUNTAS OBLIGATORIAS (DESARROLLO TERRITORIAL) -----
+        # Nota: La primera pregunta ya no es sobre el nombre.
         self.mandatory_questions = [
-            "¿En qué sector trabajas?",
+            "¿Cuáles consideras que son los principales desafíos que enfrenta tu región en términos de desarrollo territorial?",
             "¿En qué empresas has trabajado?",
             "¿Qué KPIs consideras relevantes en tu sector?",
             "¿Dónde consultas tus fuentes de información?"
         ]
-
+        
         # Índice para saber qué pregunta obligatoria se está trabajando
         self.mandatory_index = 0
-
+        
         # Seguimiento de preguntas de seguimiento (máximo 1 por pregunta obligatoria)
         self.follow_up_count = 0
         self.MAX_FOLLOW_UP = 1
-
+        
         # Donde se guardarán las respuestas del usuario, asociadas a cada pregunta obligatoria
+        # Se agregará también el nombre bajo la clave "Nombre"
         self.collected_data = {}
-
+        
         # Ruta del archivo JSON para guardar la sesión
         self.json_file_path = os.path.join("data", "json_folder", "territorial_data.json")
-
+    
     def add_user_answer(self, user_input: str):
         """
-        Guarda la respuesta del usuario en 'collected_data' asociada a la pregunta obligatoria actual
-        y añade el mensaje al historial.
+        Procesa la respuesta del usuario. Si aún no se ha registrado el nombre, se asume que el
+        primer mensaje es su nombre y se genera una respuesta automática de saludo. En otros casos,
+        se almacena la respuesta asociada a la pregunta obligatoria actual.
         """
-        if self.mandatory_index < len(self.mandatory_questions):
-            current_question = self.mandatory_questions[self.mandatory_index]
+        # Si aún no se ha guardado el nombre, procesarlo
+        if self.user_name is None:
+            self.user_name = user_input.strip()
+            self.collected_data["Nombre"] = [self.user_name]
+            self.conversation_history.append({"role": "user", "content": user_input})
+            # Respuesta automática del asistente
+            saludo = (f"Encantado de conocerte, {self.user_name}. Vamos a empezar con la primera pregunta obligatoria sobre desarrollo territorial: "
+                      f"{self.mandatory_questions[0]}")
+            self.conversation_history.append({"role": "assistant", "content": saludo})
+            return saludo  # Se devuelve la respuesta para fines de visualización si se requiere
         else:
-            current_question = f"Pregunta fuera de índice_{self.mandatory_index}"
-        
-        self.collected_data.setdefault(current_question, [])
-        self.collected_data[current_question].append(user_input)
-        self.conversation_history.append({"role": "user", "content": user_input})
+            # Procesamiento normal: almacenar respuesta en la pregunta obligatoria actual
+            if self.mandatory_index < len(self.mandatory_questions):
+                current_question = self.mandatory_questions[self.mandatory_index]
+            else:
+                current_question = f"Pregunta fuera de índice_{self.mandatory_index}"
+            self.collected_data.setdefault(current_question, [])
+            self.collected_data[current_question].append(user_input)
+            self.conversation_history.append({"role": "user", "content": user_input})
     
     def go_to_next_mandatory_question(self):
         """
         Avanza a la siguiente pregunta obligatoria y reinicia el contador de seguimiento.
-        Añade un mensaje 'user' para forzar al modelo a formular la siguiente pregunta obligatoria.
+        Agrega un mensaje forzado para solicitar la siguiente pregunta.
         """
         self.mandatory_index += 1
-        self.follow_up_count = 0  # Resetea el contador de seguimiento
-
+        self.follow_up_count = 0  # Resetea el contador
+        
         if self.mandatory_index < len(self.mandatory_questions):
             next_question = self.mandatory_questions[self.mandatory_index]
             forced_prompt = (
@@ -86,7 +99,7 @@ class TerritorialChat:
     def get_model_response(self):
         """
         Realiza la llamada sincrónica a la API de OpenAI y retorna la respuesta completa.
-        Se utiliza la estructura básica de los docs, sin streaming.
+        Se utiliza la estructura básica de la API, sin streaming.
         """
         try:
             completion = self.client.chat.completions.create(
