@@ -50,11 +50,11 @@ if "chat" not in st.session_state:
 st.title("Chat - Desarrollo Territorial")
 st.markdown("Utiliza el chat para aportar información complementaria. La respuesta se borrará al enviarla.")
 
-# Contenedor del historial de conversación (se ocultan mensajes de sistema)
+# Contenedor del historial de conversación (no se muestran mensajes de sistema)
 with st.container():
     st.markdown('<div class="chat-container">', unsafe_allow_html=True)
     for msg in st.session_state.chat.conversation_history:
-        # No mostrar el mensaje del sistema (prompt inicial)
+        # Ocultamos los mensajes del sistema, si se deseara
         if msg["role"] == "system":
             continue
         elif msg["role"] == "user":
@@ -69,22 +69,18 @@ with st.container():
             )
     st.markdown("</div>", unsafe_allow_html=True)
 
-# Formulario para enviar la respuesta (clear_on_submit limpia el input al enviar)
+# Formulario para enviar la respuesta (clear_on_submit borra el input al enviar)
 with st.form(key="chat_form", clear_on_submit=True):
     user_message = st.text_input("Escribe tu respuesta:")
     submitted = st.form_submit_button("Enviar")
 
 if submitted and user_message:
-    # Si el nombre aún no se ha registrado, se asume que la respuesta es el nombre.
-    if st.session_state.chat.user_name is None:
-        st.session_state.chat.add_user_answer(user_message)
-    else:
-        st.session_state.chat.add_user_answer(user_message)
-        # Control de seguimiento: si se ha alcanzado el máximo de follow-up, se avanza a la siguiente pregunta obligatoria.
+    # Si el nombre aún no se ha registrado, se considera que la respuesta es el nombre.
+    st.session_state.chat.add_user_answer(user_message)
+    # Si ya se registró el nombre, se procesa la respuesta normal
+    if st.session_state.chat.user_name is not None:
         if st.session_state.chat.follow_up_count >= st.session_state.chat.MAX_FOLLOW_UP:
             st.session_state.chat.go_to_next_mandatory_question()
         else:
             st.session_state.chat.follow_up_count += 1
-        # Se solicita la respuesta del modelo y se añade al historial.
         st.session_state.chat.get_model_response()
-    # No se utiliza st.experimental_rerun() ya que el formulario con clear_on_submit limpia el input y el estado se actualiza automáticamente.

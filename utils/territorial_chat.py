@@ -20,14 +20,14 @@ class TerritorialChat:
             "que hay información interesante adicional. Mantén la conversación centrada en temas de desarrollo territorial."
         )
         
-        # Se inicia el historial con el prompt del sistema y la primera pregunta para obtener el nombre.
+        # Se inicia el historial con el prompt del sistema y un mensaje del asistente.
         self.conversation_history = [
             {"role": "system", "content": self.system_prompt},
-            {"role": "user", "content": "Hola, ¿cuál es tu nombre?"}
+            {"role": "assistant", "content": "Hola, ¿cuál es tu nombre?"}
         ]
         
         # ----- PREGUNTAS OBLIGATORIAS (DESARROLLO TERRITORIAL) -----
-        # La primera pregunta obligatoria (ya que el nombre se recoge aparte)
+        # La primera pregunta obligatoria se hará luego de recoger el nombre.
         self.mandatory_questions = [
             "¿Cuáles consideras que son los principales desafíos que enfrenta tu región en términos de desarrollo territorial?",
             "¿En qué empresas has trabajado?",
@@ -81,16 +81,17 @@ class TerritorialChat:
         """
         self.mandatory_index += 1
         self.follow_up_count = 0  # Resetea el contador
+        
         if self.mandatory_index < len(self.mandatory_questions):
             next_question = self.mandatory_questions[self.mandatory_index]
             forced_prompt = (
                 f"Por favor, pregunta: '{next_question}'. "
                 "Recuerda que es una pregunta obligatoria y no te desvíes de momento."
             )
-            self.conversation_history.append({"role": "user", "content": forced_prompt})
+            self.conversation_history.append({"role": "assistant", "content": forced_prompt})
         else:
             self.conversation_history.append({
-                "role": "user",
+                "role": "assistant",
                 "content": "Ya no hay más preguntas obligatorias. Puedes finalizar la conversación."
             })
     
@@ -133,4 +134,3 @@ class TerritorialChat:
             st.success(f"Datos de la conversación guardados en {self.json_file_path}")
         except Exception as e:
             st.error(f"Error al guardar datos en JSON: {e}")
-            
