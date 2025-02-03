@@ -75,5 +75,7 @@ class TerritorialChat:
                 json.dump(new_entry, f, indent=4, ensure_ascii=False)
                 f.write("\n")
             st.success("Datos guardados correctamente.")
+            st.rerun()
         except Exception as e:
             st.error(f"Error al guardar datos: {e}")
+
