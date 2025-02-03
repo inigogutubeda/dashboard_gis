@@ -6,7 +6,7 @@ import streamlit as st
 
 class TerritorialChat:
     def __init__(self):
-        # Se obtiene la API key desde los secrets de Streamlit Cloud
+        # Se obtiene la API key desde los secrets de Streamlit Cloud.
         self.client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
         # ----- PROMPTS Y CONTEXTO -----
@@ -94,7 +94,7 @@ class TerritorialChat:
                 messages=self.conversation_history
             )
             response_message = completion.choices[0].message.content
-            # Añadir la respuesta del asistente al historial para mantener el contexto
+            # Añadimos la respuesta del asistente al historial para mantener el contexto
             self.conversation_history.append({"role": "assistant", "content": response_message})
             return response_message
         except Exception as e:

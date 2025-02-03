@@ -18,7 +18,6 @@ if st.button("Enviar"):
         else:
             st.session_state.chat.follow_up_count += 1
         st.session_state.chat.get_model_response()
-        st.experimental_rerun()
 
 st.markdown("### Historial de la Conversación:")
 for msg in st.session_state.chat.conversation_history:
