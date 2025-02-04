@@ -10,6 +10,8 @@ class TerritorialChat:
         self.client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
         
         self.user_name = None  # Se guardará el nombre del usuario
+        self.user_region = None  # Nueva variable para región
+        self.user_sector = None  # Nueva variable para sector
 
         # ----- PROMPTS Y CONTEXTO -----
         self.system_prompt = (
@@ -20,14 +22,13 @@ class TerritorialChat:
             "que hay información interesante adicional. Mantén la conversación centrada en temas de desarrollo territorial."
         )
         
-        # Se inicia el historial con el prompt del sistema y un mensaje del asistente.
+        # Se inicia el historial con el prompt del sistema
         self.conversation_history = [
             {"role": "system", "content": self.system_prompt},
             {"role": "assistant", "content": "Hola, ¿cuál es tu nombre?"}
         ]
         
-        # ----- PREGUNTAS OBLIGATORIAS (DESARROLLO TERRITORIAL) -----
-        # La primera pregunta obligatoria se hará luego de recoger el nombre.
+        # ----- PREGUNTAS OBLIGATORIAS -----
         self.mandatory_questions = [
             "¿Cuáles consideras que son los principales desafíos que enfrenta tu región en términos de desarrollo territorial?",
             "¿En qué empresas has trabajado?",
@@ -35,15 +36,11 @@ class TerritorialChat:
             "¿Dónde consultas tus fuentes de información?"
         ]
         
-        # Índice para saber qué pregunta obligatoria se está trabajando
-        self.mandatory_index = 0
-        
-        # Seguimiento de preguntas de seguimiento (máximo 1 por pregunta obligatoria)
+        self.mandatory_index = 0  # Índice de pregunta actual
         self.follow_up_count = 0
         self.MAX_FOLLOW_UP = 1
         
-        # Donde se guardarán las respuestas del usuario, asociadas a cada pregunta obligatoria
-        # Se agrega también el nombre bajo la clave "Nombre"
+        # Donde se guardarán las respuestas del usuario
         self.collected_data = {}
         
         # Ruta del archivo JSON para guardar la sesión
@@ -53,53 +50,37 @@ class TerritorialChat:
         """
         Procesa la respuesta del usuario. Si aún no se ha registrado el nombre, se asume que el
         primer mensaje es su nombre y se genera una respuesta automática de saludo y la primera pregunta.
-        En otros casos, se almacena la respuesta asociada a la pregunta obligatoria actual.
         """
-        # Si aún no se ha guardado el nombre, procesarlo
         if self.user_name is None:
             self.user_name = user_input.strip()
             self.collected_data["Nombre"] = [self.user_name]
             self.conversation_history.append({"role": "user", "content": user_input})
-            saludo = (f"Encantado de conocerte, {self.user_name}. Vamos a empezar con la primera pregunta obligatoria sobre desarrollo territorial: "
+            saludo = (f"Encantado de conocerte, {self.user_name}. Vamos a empezar con la primera pregunta: "
                       f"{self.mandatory_questions[0]}")
             self.conversation_history.append({"role": "assistant", "content": saludo})
             return saludo
         else:
-            # Procesamiento normal: almacenar la respuesta en la pregunta obligatoria actual.
             if self.mandatory_index < len(self.mandatory_questions):
                 current_question = self.mandatory_questions[self.mandatory_index]
             else:
                 current_question = f"Pregunta fuera de índice_{self.mandatory_index}"
-            self.collected_data.setdefault(current_question, [])
-            self.collected_data[current_question].append(user_input)
+            
+            self.collected_data.setdefault(current_question, []).append(user_input)
             self.conversation_history.append({"role": "user", "content": user_input})
-    
+
     def go_to_next_mandatory_question(self):
-        """
-        Avanza a la siguiente pregunta obligatoria y reinicia el contador de seguimiento.
-        Agrega un mensaje forzado para solicitar la siguiente pregunta.
-        """
+        """Avanza a la siguiente pregunta obligatoria."""
         self.mandatory_index += 1
         self.follow_up_count = 0  # Resetea el contador
         
         if self.mandatory_index < len(self.mandatory_questions):
             next_question = self.mandatory_questions[self.mandatory_index]
-            forced_prompt = (
-                f"Por favor, pregunta: '{next_question}'. "
-                "Recuerda que es una pregunta obligatoria y no te desvíes de momento."
-            )
-            self.conversation_history.append({"role": "assistant", "content": forced_prompt})
+            self.conversation_history.append({"role": "assistant", "content": next_question})
         else:
-            self.conversation_history.append({
-                "role": "assistant",
-                "content": "Ya no hay más preguntas obligatorias. Puedes finalizar la conversación."
-            })
+            self.conversation_history.append({"role": "assistant", "content": "No hay más preguntas obligatorias."})
     
     def get_model_response(self):
-        """
-        Realiza la llamada sincrónica a la API de OpenAI y retorna la respuesta completa.
-        Se utiliza la estructura básica de la API, sin streaming.
-        """
+        """Genera una respuesta de OpenAI."""
         try:
             completion = self.client.chat.completions.create(
                 model="gpt-4o",
@@ -109,12 +90,10 @@ class TerritorialChat:
             self.conversation_history.append({"role": "assistant", "content": response_message})
             return response_message
         except Exception as e:
-            return f"Error al obtener la respuesta del modelo: {e}"
+            return f"Error al obtener respuesta del modelo: {e}"
     
     def save_data_to_json(self):
-        """
-        Guarda en un archivo JSON la sesión actual, incluyendo un timestamp y las respuestas recopiladas.
-        """
+        """Guarda la sesión actual en JSON."""
         new_entry = {
             "timestamp": datetime.now().isoformat(),
             "territorial_info": self.collected_data
@@ -131,6 +110,6 @@ class TerritorialChat:
             os.makedirs(os.path.dirname(self.json_file_path), exist_ok=True)
             with open(self.json_file_path, "w", encoding="utf-8") as f:
                 json.dump(existing_data, f, indent=4, ensure_ascii=False)
-            st.success(f"Datos de la conversación guardados en {self.json_file_path}")
+            st.success(f"Datos guardados en {self.json_file_path}")
         except Exception as e:
-            st.error(f"Error al guardar datos en JSON: {e}")
+            st.error(f"Error al guardar datos: {e}")

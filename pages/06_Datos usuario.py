@@ -1,60 +1,82 @@
 import streamlit as st
 from utils.territorial_chat import TerritorialChat
 
-# CSS personalizado para mejorar la experiencia del chat
+# CSS mejorado para la interfaz del chat
 st.markdown(
     """
     <style>
     .chat-container {
-        background-color: #ffffff;
-        border: 1px solid #ccc;
+        background-color: #f8f9fa;
+        border-radius: 10px;
         padding: 15px;
-        border-radius: 8px;
         max-height: 600px;
         overflow-y: auto;
         margin-bottom: 20px;
+        border: 1px solid #ddd;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     }
     .message {
+        display: flex;
+        align-items: center;
         margin: 10px 0;
     }
     .user-message {
+        justify-content: flex-end;
         text-align: right;
     }
     .assistant-message {
+        justify-content: flex-start;
         text-align: left;
     }
     .message p {
-        display: inline-block;
-        padding: 10px;
-        border-radius: 10px;
-        max-width: 80%;
-        margin: 0;
+        padding: 12px;
+        border-radius: 8px;
+        max-width: 75%;
+        margin: 5px;
+        font-size: 14px;
     }
     .user-message p {
-        background-color: #d1e7dd;
-        color: #0f5132;
+        background-color: #007bff;
+        color: white;
     }
     .assistant-message p {
-        background-color: #e2e3e5;
-        color: #41464b;
+        background-color: #e9ecef;
+        color: black;
     }
     </style>
     """,
     unsafe_allow_html=True
 )
 
-# Inicializar el objeto de chat en el estado de sesión
+# Formulario de información inicial
+if "user_info" not in st.session_state:
+    with st.form("user_info_form"):
+        nombre = st.text_input("Tu nombre:")
+        region = st.text_input("¿En qué región trabajas?")
+        sector = st.text_input("¿En qué sector trabajas?")
+        enviado = st.form_submit_button("Iniciar Chat")
+
+    if enviado and nombre:
+        st.session_state.user_info = {
+            "nombre": nombre,
+            "region": region,
+            "sector": sector
+        }
+        st.session_state.chat = TerritorialChat()
+        st.session_state.chat.add_user_answer(nombre)
+        st.experimental_rerun()
+
+# Inicializar el chat si no está en sesión
 if "chat" not in st.session_state:
     st.session_state.chat = TerritorialChat()
 
 st.title("Chat - Desarrollo Territorial")
 st.markdown("Utiliza el chat para aportar información complementaria. La respuesta se borrará al enviarla.")
 
-# Contenedor del historial de conversación (no se muestran mensajes de sistema)
+# Renderizado del historial de conversación
 with st.container():
     st.markdown('<div class="chat-container">', unsafe_allow_html=True)
     for msg in st.session_state.chat.conversation_history:
-        # Ocultamos los mensajes del sistema, si se deseara
         if msg["role"] == "system":
             continue
         elif msg["role"] == "user":
@@ -69,18 +91,12 @@ with st.container():
             )
     st.markdown("</div>", unsafe_allow_html=True)
 
-# Formulario para enviar la respuesta (clear_on_submit borra el input al enviar)
+# Entrada del usuario
 with st.form(key="chat_form", clear_on_submit=True):
     user_message = st.text_input("Escribe tu respuesta:")
     submitted = st.form_submit_button("Enviar")
 
 if submitted and user_message:
-    # Si el nombre aún no se ha registrado, se considera que la respuesta es el nombre.
     st.session_state.chat.add_user_answer(user_message)
-    # Si ya se registró el nombre, se procesa la respuesta normal
-    if st.session_state.chat.user_name is not None:
-        if st.session_state.chat.follow_up_count >= st.session_state.chat.MAX_FOLLOW_UP:
-            st.session_state.chat.go_to_next_mandatory_question()
-        else:
-            st.session_state.chat.follow_up_count += 1
-        st.session_state.chat.get_model_response()
+    response = st.session_state.chat.get_model_response()
+    st.experimental_rerun()
