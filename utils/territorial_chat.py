@@ -37,7 +37,7 @@ class TerritorialChat:
         
         self.mandatory_index = 0  # Índice de pregunta actual
         self.follow_up_count = 0
-        self.MAX_FOLLOW_UP = 1
+        self.MAX_FOLLOW_UP = 1  # Límite de preguntas de seguimiento por cada pregunta obligatoria
         
         # Donde se guardarán las respuestas del usuario
         self.collected_data = {}
@@ -58,7 +58,16 @@ class TerritorialChat:
             if self.mandatory_index < len(self.mandatory_questions):
                 current_question = self.mandatory_questions[self.mandatory_index]
                 self.collected_data.setdefault(current_question, []).append(user_input)
+                
+                if self.follow_up_count < self.MAX_FOLLOW_UP:
+                    follow_up_question = self.generate_follow_up_question(user_input)
+                    if follow_up_question:
+                        self.conversation_history.append({"role": "assistant", "content": follow_up_question})
+                        self.follow_up_count += 1
+                        return
+                
                 self.mandatory_index += 1  # Avanzar a la siguiente pregunta
+                self.follow_up_count = 0  # Reiniciar contador de preguntas de seguimiento
                 self.ask_next_mandatory_question()
             else:
                 self.chat_complete = True  # Se han completado todas las preguntas
@@ -71,6 +80,20 @@ class TerritorialChat:
         else:
             self.conversation_history.append({"role": "assistant", "content": "¡Gracias! Hemos terminado con las preguntas obligatorias."})
             self.chat_complete = True
+    
+    def generate_follow_up_question(self, user_input):
+        """Genera una pregunta de seguimiento basada en la respuesta del usuario para mayor granularidad."""
+        try:
+            completion = self.client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": "Genera una única pregunta de seguimiento para obtener más detalles sobre la siguiente respuesta:"},
+                    {"role": "user", "content": user_input}
+                ]
+            )
+            return completion.choices[0].message.content
+        except Exception as e:
+            return None
     
     def get_model_response(self):
         """Genera una respuesta de OpenAI."""
