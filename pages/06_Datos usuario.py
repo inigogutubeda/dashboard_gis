@@ -99,4 +99,4 @@ with st.form(key="chat_form", clear_on_submit=True):
 if submitted and user_message:
     st.session_state.chat.add_user_answer(user_message)
     response = st.session_state.chat.get_model_response()
-    st.experimental_rerun()
+    
