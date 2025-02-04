@@ -10,16 +10,15 @@ class TerritorialChat:
         self.client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
         
         self.user_name = None  # Se guardará el nombre del usuario
-        self.user_region = None  # Nueva variable para región
-        self.user_sector = None  # Nueva variable para sector
-
+        self.chat_complete = False  # Bandera para saber cuándo finalizar el chat
+        
         # ----- PROMPTS Y CONTEXTO -----
         self.system_prompt = (
             "Eres un entrevistador experto en desarrollo territorial. "
             "Tu objetivo es recopilar información clave para aumentar la granularidad de los datos en este ámbito. "
             "Debes cubrir una serie de preguntas obligatorias para obtener datos cerrados, "
-            "pero puedes hacer hasta 1 pregunta de seguimiento (más abierta) por cada pregunta obligatoria si identificas "
-            "que hay información interesante adicional. Mantén la conversación centrada en temas de desarrollo territorial."
+            "pero puedes hacer hasta 1 pregunta de seguimiento si detectas información relevante. "
+            "Mantén la conversación centrada en temas de desarrollo territorial."
         )
         
         # Se inicia el historial con el prompt del sistema
@@ -48,36 +47,30 @@ class TerritorialChat:
     
     def add_user_answer(self, user_input: str):
         """
-        Procesa la respuesta del usuario. Si aún no se ha registrado el nombre, se asume que el
-        primer mensaje es su nombre y se genera una respuesta automática de saludo y la primera pregunta.
+        Procesa la respuesta del usuario. Si aún no se ha registrado el nombre, lo asigna y lanza la primera pregunta obligatoria.
         """
         if self.user_name is None:
             self.user_name = user_input.strip()
             self.collected_data["Nombre"] = [self.user_name]
             self.conversation_history.append({"role": "user", "content": user_input})
-            saludo = (f"Encantado de conocerte, {self.user_name}. Vamos a empezar con la primera pregunta: "
-                      f"{self.mandatory_questions[0]}")
-            self.conversation_history.append({"role": "assistant", "content": saludo})
-            return saludo
+            self.ask_next_mandatory_question()
         else:
             if self.mandatory_index < len(self.mandatory_questions):
                 current_question = self.mandatory_questions[self.mandatory_index]
+                self.collected_data.setdefault(current_question, []).append(user_input)
+                self.mandatory_index += 1  # Avanzar a la siguiente pregunta
+                self.ask_next_mandatory_question()
             else:
-                current_question = f"Pregunta fuera de índice_{self.mandatory_index}"
-            
-            self.collected_data.setdefault(current_question, []).append(user_input)
-            self.conversation_history.append({"role": "user", "content": user_input})
-
-    def go_to_next_mandatory_question(self):
-        """Avanza a la siguiente pregunta obligatoria."""
-        self.mandatory_index += 1
-        self.follow_up_count = 0  # Resetea el contador
+                self.chat_complete = True  # Se han completado todas las preguntas
         
+    def ask_next_mandatory_question(self):
+        """Presenta la siguiente pregunta obligatoria si hay más pendientes."""
         if self.mandatory_index < len(self.mandatory_questions):
             next_question = self.mandatory_questions[self.mandatory_index]
             self.conversation_history.append({"role": "assistant", "content": next_question})
         else:
-            self.conversation_history.append({"role": "assistant", "content": "No hay más preguntas obligatorias."})
+            self.conversation_history.append({"role": "assistant", "content": "¡Gracias! Hemos terminado con las preguntas obligatorias."})
+            self.chat_complete = True
     
     def get_model_response(self):
         """Genera una respuesta de OpenAI."""

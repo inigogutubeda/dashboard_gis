@@ -68,9 +68,6 @@ st.markdown(
         padding: 10px;
         border-radius: 8px;
     }
-    .hidden {
-        display: none;
-    }
     </style>
     """,
     unsafe_allow_html=True
@@ -97,7 +94,7 @@ for msg in st.session_state.chat.conversation_history:
 display_messages += "</div>"
 st.markdown(display_messages, unsafe_allow_html=True)
 
-# Entrada del usuario con diseño mejorado
+# Entrada del usuario con control de preguntas obligatorias
 if not st.session_state.chat_complete:
     with st.form(key="chat_form", clear_on_submit=True):
         user_message = st.text_input("✍️ Escribe tu respuesta:")
@@ -105,8 +102,12 @@ if not st.session_state.chat_complete:
 
     if submitted and user_message:
         st.session_state.chat.add_user_answer(user_message)
-        response = st.session_state.chat.get_model_response()
-        if "No hay más preguntas obligatorias" in response:
+        
+        if st.session_state.chat.mandatory_index < len(st.session_state.chat.mandatory_questions):
+            next_question = st.session_state.chat.mandatory_questions[st.session_state.chat.mandatory_index]
+            st.session_state.chat.conversation_history.append({"role": "assistant", "content": next_question})
+            st.session_state.chat.mandatory_index += 1
+        else:
             st.session_state.chat_complete = True
         st.rerun()
 
