@@ -6,13 +6,11 @@ import streamlit as st
 
 class TerritorialChat:
     def __init__(self):
-        # Se obtiene la API key desde los secretos de Streamlit Cloud.
         self.client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
         
-        self.user_name = None  # Se guardará el nombre del usuario
-        self.chat_complete = False  # Bandera para saber cuándo finalizar el chat
-        
-        # ----- PROMPTS Y CONTEXTO -----
+        self.user_name = None
+        self.chat_complete = False  
+
         self.system_prompt = (
             "Eres un entrevistador experto en desarrollo territorial. "
             "Tu objetivo es recopilar información clave para aumentar la granularidad de los datos en este ámbito. "
@@ -21,13 +19,11 @@ class TerritorialChat:
             "Mantén la conversación centrada en temas de desarrollo territorial."
         )
         
-        # Se inicia el historial con el prompt del sistema
         self.conversation_history = [
             {"role": "system", "content": self.system_prompt},
             {"role": "assistant", "content": "Hola, ¿cuál es tu nombre?"}
         ]
         
-        # ----- PREGUNTAS OBLIGATORIAS -----
         self.mandatory_questions = [
             "¿Cuáles consideras que son los principales desafíos que enfrenta tu región en términos de desarrollo territorial?",
             "¿En qué empresas has trabajado?",
@@ -35,20 +31,15 @@ class TerritorialChat:
             "¿Dónde consultas tus fuentes de información?"
         ]
         
-        self.mandatory_index = 0  # Índice de pregunta actual
+        self.mandatory_index = 0  
         self.follow_up_count = 0
-        self.MAX_FOLLOW_UP = 1  # Límite de preguntas de seguimiento por cada pregunta obligatoria
-        
-        # Donde se guardarán las respuestas del usuario
+        self.MAX_FOLLOW_UP = 1  
+
         self.collected_data = {}
-        
-        # Ruta del archivo JSON para guardar la sesión
+
         self.json_file_path = os.path.join("data", "json_folder", "territorial_data.json")
     
     def add_user_answer(self, user_input: str):
-        """
-        Procesa la respuesta del usuario. Si aún no se ha registrado el nombre, lo asigna y lanza la primera pregunta obligatoria.
-        """
         if self.user_name is None:
             self.user_name = user_input.strip()
             self.collected_data["Nombre"] = [self.user_name]
@@ -58,22 +49,21 @@ class TerritorialChat:
             if self.mandatory_index < len(self.mandatory_questions):
                 current_question = self.mandatory_questions[self.mandatory_index]
                 self.collected_data.setdefault(current_question, []).append(user_input)
-                
+
                 if self.follow_up_count < self.MAX_FOLLOW_UP:
                     follow_up_question = self.generate_follow_up_question(user_input)
                     if follow_up_question:
                         self.conversation_history.append({"role": "assistant", "content": follow_up_question})
                         self.follow_up_count += 1
-                        return
-                
-                self.mandatory_index += 1  # Avanzar a la siguiente pregunta
-                self.follow_up_count = 0  # Reiniciar contador de preguntas de seguimiento
+                        return  
+
+                self.mandatory_index += 1  
+                self.follow_up_count = 0  
                 self.ask_next_mandatory_question()
             else:
-                self.chat_complete = True  # Se han completado todas las preguntas
-        
+                self.chat_complete = True  
+    
     def ask_next_mandatory_question(self):
-        """Presenta la siguiente pregunta obligatoria si hay más pendientes."""
         if self.mandatory_index < len(self.mandatory_questions):
             next_question = self.mandatory_questions[self.mandatory_index]
             self.conversation_history.append({"role": "assistant", "content": next_question})
@@ -82,7 +72,6 @@ class TerritorialChat:
             self.chat_complete = True
     
     def generate_follow_up_question(self, user_input):
-        """Genera una pregunta de seguimiento basada en la respuesta del usuario para mayor granularidad."""
         try:
             completion = self.client.chat.completions.create(
                 model="gpt-4o",
@@ -92,11 +81,10 @@ class TerritorialChat:
                 ]
             )
             return completion.choices[0].message.content
-        except Exception as e:
+        except Exception:
             return None
     
     def get_model_response(self):
-        """Genera una respuesta de OpenAI."""
         try:
             completion = self.client.chat.completions.create(
                 model="gpt-4o",
@@ -109,7 +97,6 @@ class TerritorialChat:
             return f"Error al obtener respuesta del modelo: {e}"
     
     def save_data_to_json(self):
-        """Guarda la sesión actual en JSON."""
         new_entry = {
             "timestamp": datetime.now().isoformat(),
             "territorial_info": self.collected_data
