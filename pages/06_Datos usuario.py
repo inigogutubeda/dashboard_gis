@@ -51,7 +51,7 @@ if not st.session_state.chat.chat_complete:
 
     if submitted and user_message:
         st.session_state.chat.add_user_answer(user_message)
-        st.experimental_rerun()
+        st.session_state.chat.get_model_response()
 
 if st.session_state.chat.chat_complete:
     st.subheader("📢 ¿Te gustaría que un experto te contacte?")
