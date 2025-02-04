@@ -42,10 +42,11 @@ class TerritorialChat:
         self.conversation_history.append({"role": "assistant", "content": "Hola, ¿cuál es tu nombre?"})
     
     def add_user_answer(self, user_input: str):
+        self.conversation_history.append({"role": "user", "content": user_input})
+
         if self.user_name is None:
             self.user_name = user_input.strip()
             self.collected_data["Nombre"] = [self.user_name]
-            self.conversation_history.append({"role": "user", "content": user_input})
             self.ask_next_mandatory_question()
         else:
             if self.mandatory_index < len(self.mandatory_questions):
