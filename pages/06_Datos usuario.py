@@ -8,7 +8,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# CSS para mejorar la apariencia del chat y algunos elementos
+# CSS personalizado para mejorar la apariencia del chat
 CUSTOM_CSS = """
 <style>
     .chat-box {
@@ -53,7 +53,7 @@ CUSTOM_CSS = """
 
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
-# Inicializamos el estado del chat si no existe
+# Inicializar la instancia de chat en la sesión
 if "chat" not in st.session_state:
     st.session_state["chat"] = TerritorialChat()
 
@@ -69,7 +69,7 @@ st.write(
 )
 
 # =========================
-# BARRA DE PROGRESO (Opcional)
+# BARRA DE PROGRESO
 # =========================
 num_questions = len(chat_instance.mandatory_questions)
 current_index = chat_instance.mandatory_index
@@ -96,7 +96,6 @@ st.markdown("### Conversación")
 with st.container():
     st.markdown('<div class="chat-box">', unsafe_allow_html=True)
     for msg in chat_instance.conversation_history:
-        # Normalmente no mostramos el rol "system"
         if msg["role"] == "system":
             continue
         bubble_class = "assistant-bubble" if msg["role"] == "assistant" else "user-bubble"
@@ -110,14 +109,17 @@ with st.container():
 # CONTROLES PARA RESPUESTAS DEL USUARIO
 # =========================
 if not chat_instance.chat_complete:
-    user_response = st.text_input("Escribe aquí tu respuesta:")
-    # Cuando el usuario hace clic en el botón "Enviar", el script se re-ejecuta
-    if st.button("Enviar"):
+    def submit():
+        user_response = st.session_state.user_input
         if user_response.strip():
             chat_instance.add_user_answer(user_response)
-        # Streamlit re-ejecuta la app automáticamente al pulsar el botón,
-        # así que no necesitamos st.experimental_rerun()
+        st.session_state.user_input = ""  # Limpiar el campo de entrada
 
+    st.text_input(
+        "Escribe aquí tu respuesta:",
+        key="user_input",
+        on_change=submit
+    )
 else:
     st.success("¡Has completado todas las preguntas obligatorias!")
 
