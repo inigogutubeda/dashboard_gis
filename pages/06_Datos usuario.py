@@ -3,6 +3,7 @@ from utils.territorial_chat import TerritorialChat
 
 st.set_page_config(page_title="Chat Territorial", layout="wide")
 
+# CSS mejorado para una apariencia más profesional
 st.markdown("""
     <style>
     .chat-container {
@@ -25,10 +26,24 @@ st.markdown("""
         background-color: #007bff;
         color: white;
         text-align: right;
+        font-weight: bold;
+        border-radius: 15px;
     }
     .assistant-message {
         background-color: #f1f1f1;
         text-align: left;
+        border-radius: 15px;
+    }
+    .stTextInput>div>div>input {
+        border-radius: 10px !important;
+        padding: 10px !important;
+        border: 1px solid #ccc !important;
+    }
+    .stButton>button {
+        background-color: #ff4757 !important;
+        color: white !important;
+        font-weight: bold !important;
+        border-radius: 8px !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -40,6 +55,8 @@ st.title("💬 Chat - Desarrollo Territorial")
 
 st.markdown('<div class="chat-container">', unsafe_allow_html=True)
 for msg in st.session_state.chat.conversation_history:
+    if msg["role"] == "system":
+        continue  # 🔹 No mostramos el mensaje del sistema al usuario
     role_class = "user-message" if msg["role"] == "user" else "assistant-message"
     st.markdown(f'<div class="message {role_class}"><p>{msg["content"]}</p></div>', unsafe_allow_html=True)
 st.markdown("</div>", unsafe_allow_html=True)

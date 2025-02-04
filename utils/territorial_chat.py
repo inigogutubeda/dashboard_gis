@@ -20,8 +20,7 @@ class TerritorialChat:
         )
         
         self.conversation_history = [
-            {"role": "system", "content": self.system_prompt},
-            {"role": "assistant", "content": "Hola, ¿cuál es tu nombre?"}
+            {"role": "system", "content": self.system_prompt},  
         ]
         
         self.mandatory_questions = [
@@ -38,6 +37,9 @@ class TerritorialChat:
         self.collected_data = {}
 
         self.json_file_path = os.path.join("data", "json_folder", "territorial_data.json")
+
+        # 🔹 Iniciar conversación sin el mensaje del sistema en la interfaz
+        self.conversation_history.append({"role": "assistant", "content": "Hola, ¿cuál es tu nombre?"})
     
     def add_user_answer(self, user_input: str):
         if self.user_name is None:
@@ -95,24 +97,3 @@ class TerritorialChat:
             return response_message
         except Exception as e:
             return f"Error al obtener respuesta del modelo: {e}"
-    
-    def save_data_to_json(self):
-        new_entry = {
-            "timestamp": datetime.now().isoformat(),
-            "territorial_info": self.collected_data
-        }
-        try:
-            if os.path.exists(self.json_file_path):
-                with open(self.json_file_path, "r", encoding="utf-8") as f:
-                    existing_data = json.load(f)
-                if not isinstance(existing_data, list):
-                    existing_data = [existing_data]
-            else:
-                existing_data = []
-            existing_data.append(new_entry)
-            os.makedirs(os.path.dirname(self.json_file_path), exist_ok=True)
-            with open(self.json_file_path, "w", encoding="utf-8") as f:
-                json.dump(existing_data, f, indent=4, ensure_ascii=False)
-            st.success(f"Datos guardados en {self.json_file_path}")
-        except Exception as e:
-            st.error(f"Error al guardar datos: {e}")
