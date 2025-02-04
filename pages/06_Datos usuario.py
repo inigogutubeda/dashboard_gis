@@ -1,10 +1,10 @@
 import streamlit as st
 from utils.territorial_chat import TerritorialChat
 
-# Configuración de la página con diseño más limpio y espaciamiento mejorado
-st.set_page_config(page_title="Chat Territorial", layout="centered")
+# Configuración de la página con diseño mejorado
+st.set_page_config(page_title="Chat Territorial", layout="wide")
 
-# CSS mejorado para una apariencia más moderna y estilizada
+# CSS mejorado para una apariencia moderna y atractiva
 st.markdown(
     """
     <style>
@@ -19,8 +19,8 @@ st.markdown(
         margin-bottom: 20px;
     }
     .chat-container {
-        width: 100%;
-        max-width: 700px;
+        width: 80%;
+        max-width: 800px;
         background-color: #ffffff;
         border-radius: 15px;
         padding: 15px;
@@ -59,6 +59,7 @@ st.markdown(
         max-width: 600px;
         box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         margin-bottom: 20px;
+        text-align: center;
     }
     .stButton>button {
         background-color: #28a745;
@@ -67,6 +68,9 @@ st.markdown(
         padding: 10px;
         border-radius: 8px;
     }
+    .hidden {
+        display: none;
+    }
     </style>
     """,
     unsafe_allow_html=True
@@ -74,31 +78,10 @@ st.markdown(
 
 st.markdown('<div class="main-container">', unsafe_allow_html=True)
 
-# Formulario de información inicial con mejor diseño
-if "user_info" not in st.session_state:
-    with st.container():
-        st.markdown('<div class="form-container">', unsafe_allow_html=True)
-        with st.form("user_info_form"):
-            st.subheader("🔍 Información Inicial")
-            nombre = st.text_input("✏️ Tu nombre:")
-            region = st.text_input("🌍 ¿En qué región trabajas?")
-            sector = st.text_input("🏢 ¿En qué sector trabajas?")
-            enviado = st.form_submit_button("🚀 Iniciar Chat")
-
-        if enviado and nombre:
-            st.session_state.user_info = {
-                "nombre": nombre,
-                "region": region,
-                "sector": sector
-            }
-            st.session_state.chat = TerritorialChat()
-            st.session_state.chat.add_user_answer(nombre)
-            st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
-
 # Inicializar el chat si no está en sesión
 if "chat" not in st.session_state:
     st.session_state.chat = TerritorialChat()
+    st.session_state.chat_complete = False
 
 st.markdown("<div class='header-container'><h2>💬 Chat - Desarrollo Territorial</h2></div>", unsafe_allow_html=True)
 
@@ -114,14 +97,33 @@ for msg in st.session_state.chat.conversation_history:
 display_messages += "</div>"
 st.markdown(display_messages, unsafe_allow_html=True)
 
-# Entrada del usuario con diseño más limpio
-with st.form(key="chat_form", clear_on_submit=True):
-    user_message = st.text_input("✍️ Escribe tu respuesta:")
-    submitted = st.form_submit_button("📩 Enviar")
+# Entrada del usuario con diseño mejorado
+if not st.session_state.chat_complete:
+    with st.form(key="chat_form", clear_on_submit=True):
+        user_message = st.text_input("✍️ Escribe tu respuesta:")
+        submitted = st.form_submit_button("📩 Enviar")
 
-if submitted and user_message:
-    st.session_state.chat.add_user_answer(user_message)
-    response = st.session_state.chat.get_model_response()
-    st.rerun()
+    if submitted and user_message:
+        st.session_state.chat.add_user_answer(user_message)
+        response = st.session_state.chat.get_model_response()
+        if "No hay más preguntas obligatorias" in response:
+            st.session_state.chat_complete = True
+        st.rerun()
+
+# Mostrar formulario de contacto una vez finalizado el chat
+if st.session_state.chat_complete:
+    with st.container():
+        st.markdown('<div class="form-container">', unsafe_allow_html=True)
+        st.subheader("📢 ¿Te gustaría que un experto te contacte?")
+        with st.form("contact_form"):
+            nombre = st.text_input("✏️ Nombre:")
+            email = st.text_input("📧 Email:")
+            area_interes = st.selectbox("💼 Área de interés:", ["Desarrollo Territorial", "Economía", "Sostenibilidad", "Otro"])
+            mensaje = st.text_area("📝 Mensaje adicional:")
+            enviado = st.form_submit_button("✅ Enviar solicitud")
+        
+        if enviado and nombre and email:
+            st.success("¡Gracias! Nos pondremos en contacto contigo pronto.")
+        st.markdown('</div>', unsafe_allow_html=True)
 
 st.markdown('</div>', unsafe_allow_html=True)
