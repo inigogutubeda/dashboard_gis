@@ -63,8 +63,7 @@ st.markdown("</div>", unsafe_allow_html=True)
 if not st.session_state.chat.chat_complete:
     user_message = st.text_input("✍️ Escribe tu respuesta:")
     if user_message:
-        st.session_state.chat.add_user_answer(user_message)
-        st.experimental_rerun()  # 🔹 Se ejecuta después de recibir una respuesta
+        st.session_state.chat.add_user_answer(user_message)  # 🔹 Se ejecuta después de recibir una respuesta
 
 if st.session_state.chat.chat_complete:
     st.subheader("📢 ¿Te gustaría que un experto te contacte?")
