@@ -44,7 +44,7 @@ class TerritorialChat:
 
         # Control para preguntas de seguimiento
         self.follow_up_count = 0
-        self.MAX_FOLLOW_UP = 1  # máximo de 1 pregunta de seguimiento por pregunta obligatoria
+        self.MAX_FOLLOW_UP = 2  # máximo de 1 pregunta de seguimiento por pregunta obligatoria
 
         # Diccionario donde se guardan las respuestas del usuario
         self.collected_data = {}

@@ -127,13 +127,14 @@ else:
 # FORMULARIO FINAL (Contacto)
 # =========================
 if chat_instance.chat_complete:
-    st.markdown("#### Formulario de Contacto")
+    st.markdown("#### Nos gustaría que nos ayudases a seguir mejorando los datps:")
     with st.form("contact_form"):
         contact_name = st.text_input("Nombre:")
         contact_email = st.text_input("Correo:")
+        contact_phone = st.text_input("Teléfono:")
         interest_area = st.selectbox(
-            "Área de interés",
-            ["Desarrollo Territorial", "Economía", "Sostenibilidad", "Otro"]
+            "¿En que área eres experto?",
+            ["Desarrollo Territorial", "Economía", "Sostenibilidad","Empleo", "Inmobiliario","Politicas Publicas", "Otro"]
         )
         additional_msg = st.text_area("Mensaje adicional:")
 
