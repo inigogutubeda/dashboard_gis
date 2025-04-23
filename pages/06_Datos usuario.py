@@ -127,7 +127,7 @@ else:
 # FORMULARIO FINAL (Contacto)
 # =========================
 if chat_instance.chat_complete:
-    st.markdown("#### Nos gustaría que nos ayudases a seguir mejorando los datps:")
+    st.markdown("#### Nos gustaría que nos ayudases a seguir mejorando los datos:")
     with st.form("contact_form"):
         contact_name = st.text_input("Nombre:")
         contact_email = st.text_input("Correo:")
